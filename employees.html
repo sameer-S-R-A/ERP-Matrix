@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Directory — ERP Management App</title>
+    <script>if (!localStorage.getItem('erp_session')) window.location.href = 'login.html';</script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#059669">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="employees.css">
+</head>
+<body>
+
+<nav class="app-nav">
+    <div class="nav-content">
+        <img src="logo.png" alt="ERP Logo" class="nav-logo" onerror="this.src='https://placehold.co/42x42/059669/white?text=ERP'">
+        <h1>ERP Management App</h1>
+        <span class="module-tag">Employees</span>
+    </div>
+</nav>
+
+<div class="page-wrap">
+
+    <a href="index.html" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Dashboard
+    </a>
+
+    <div class="page-header">
+        <div>
+            <h2>Employee Directory</h2>
+            <p class="subtitle">All workers across every active site</p>
+        </div>
+        <a href="employee-form.html" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Employee
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+        <div class="search-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="search" id="searchInput" placeholder="Search by name, ID, role, phone…">
+        </div>
+        <select class="filter-select" id="siteFilter">
+            <option value="">All Sites</option>
+        </select>
+        <select class="filter-select" id="deptFilter">
+            <option value="">All Departments</option>
+        </select>
+        <select class="filter-select" id="statusFilter">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="on_leave">On Leave</option>
+            <option value="inactive">Inactive</option>
+        </select>
+        <a href="attendance-mark.html" class="btn btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Mark Attendance
+        </a>
+    </div>
+
+    <!-- Employee Grid -->
+    <div class="emp-grid" id="empGrid"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <p>No employees match your filters.</p>
+    </div>
+
+</div>
+
+<script src="data.js"></script>
+<script>
+    Auth.requireAuth();
+
+    const empGrid      = document.getElementById('empGrid');
+    const emptyState   = document.getElementById('emptyState');
+    const searchInput  = document.getElementById('searchInput');
+    const siteFilter   = document.getElementById('siteFilter');
+    const deptFilter   = document.getElementById('deptFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    let _debounce;
+
+    (async () => {
+        const [sites, depts] = await Promise.all([API.getSites(), API.getDepartments()]);
+        sites.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = s.short;
+            siteFilter.appendChild(opt);
+        });
+        depts.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id; opt.textContent = d.name;
+            deptFilter.appendChild(opt);
+        });
+        await renderStats();
+        await render();
+    })();
+
+    async function renderStats() {
+        const [emps, sites] = await Promise.all([API.getEmployees(), API.getSites()]);
+        document.getElementById('statsRow').innerHTML = `
+            <div class="stat-card"><div class="label">Total Workers</div><div class="value">${emps.length}</div></div>
+            <div class="stat-card green"><div class="label">Active</div><div class="value">${emps.filter(e => e.status === 'active').length}</div></div>
+            <div class="stat-card"><div class="label">On Leave</div><div class="value">${emps.filter(e => e.status === 'on_leave').length}</div></div>
+            <div class="stat-card blue"><div class="label">Active Sites</div><div class="value">${sites.filter(s => s.status === 'active').length}</div></div>`;
+    }
+
+    async function render() {
+        const filters = {
+            search:        searchInput.value.trim(),
+            site_id:       siteFilter.value,
+            department_id: deptFilter.value,
+            status:        statusFilter.value
+        };
+        const [list, sites, depts] = await Promise.all([
+            API.getEmployees(filters), API.getSites(), API.getDepartments()
+        ]);
+        const siteMap = Object.fromEntries(sites.map(s => [s.id, s]));
+        const deptMap = Object.fromEntries(depts.map(d => [d.id, d]));
+
+        if (list.length === 0) {
+            empGrid.innerHTML = '';
+            emptyState.style.display = 'block';
+            return;
+        }
+        emptyState.style.display = 'none';
+
+        empGrid.innerHTML = list.map(e => {
+            const site = siteMap[e.site_id];
+            const dept = deptMap[e.department_id];
+            return `
+                <a href="employee-detail.html?id=${e.id}" class="emp-card">
+                    <div class="emp-card-top">
+                        <div class="emp-avatar">${getInitials(e.name)}</div>
+                        <div class="emp-card-info">
+                            <h3>${e.name}</h3>
+                            <div class="role">${e.role} · ${e.id}</div>
+                        </div>
+                        ${statusBadge(e.status)}
+                    </div>
+                    <div class="emp-card-meta">
+                        <span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            ${site ? site.short : '—'}
+                        </span>
+                        ${dept ? `<span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>${dept.name}</span>` : ''}
+                        <span>${formatCurrency(e.wage_per_day)}/day</span>
+                    </div>
+                </a>`;
+        }).join('');
+    }
+
+    [searchInput, siteFilter, deptFilter, statusFilter].forEach(el => el.addEventListener('input', () => {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(render, 300);
+    }));
+</script>
+</body>
+</html>

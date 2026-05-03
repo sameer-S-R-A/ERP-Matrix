@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Payment — ERP Management App</title>
+    <script>if (!localStorage.getItem('erp_session')) window.location.href = 'login.html';</script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#059669">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="employees.css">
+</head>
+<body>
+
+<nav class="app-nav">
+    <div class="nav-content">
+        <img src="logo.png" alt="ERP Logo" class="nav-logo" onerror="this.src='https://placehold.co/42x42/059669/white?text=ERP'">
+        <h1>ERP Management App</h1>
+        <span class="module-tag">Record Payment</span>
+    </div>
+</nav>
+
+<div class="page-wrap">
+    <a href="employees.html" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Directory
+    </a>
+
+    <div class="page-header">
+        <div>
+            <h2>Record Payment</h2>
+            <p class="subtitle" id="subtitle">Log a wage payment or advance.</p>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <form onsubmit="handleSave(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="emp_id">Employee *</label>
+                    <select id="emp_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Payment Date *</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="type">Type *</label>
+                    <select id="type" required>
+                        <option value="weekly_wage">Weekly Wage</option>
+                        <option value="daily_wage">Daily Wage</option>
+                        <option value="advance">Advance</option>
+                        <option value="bonus">Bonus</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount (₹) *</label>
+                    <input type="number" id="amount" required min="1" placeholder="e.g. 5000">
+                </div>
+                <div class="form-group full">
+                    <label for="note">Note</label>
+                    <input type="text" id="note" placeholder="e.g. Week 18 wages, medical advance…">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="employees.html" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Save Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+    Auth.requireAuth();
+
+    const empSelect = document.getElementById('emp_id');
+
+    (async () => {
+        const [emps, sites] = await Promise.all([API.getEmployees(), API.getSites()]);
+        const siteMap = Object.fromEntries(sites.map(s => [s.id, s]));
+
+        empSelect.innerHTML = '<option value="">Select employee</option>' +
+            emps.map(e => {
+                const site = siteMap[e.site_id];
+                return `<option value="${e.id}">${e.name} (${e.id}) — ${e.role}${site ? ' · ' + site.short : ''}</option>`;
+            }).join('');
+
+        const presetEmp = getQueryParam('emp');
+        if (presetEmp) {
+            empSelect.value = presetEmp;
+            const e = emps.find(em => em.id === presetEmp);
+            if (e) document.getElementById('subtitle').textContent = `For ${e.name} (${e.id})`;
+        }
+
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    })();
+
+    async function handleSave(e) {
+        e.preventDefault();
+        const empId  = document.getElementById('emp_id').value;
+        const date   = document.getElementById('date').value;
+        const type   = document.getElementById('type').value;
+        const amount = parseInt(document.getElementById('amount').value);
+        const note   = document.getElementById('note').value.trim();
+
+        await API.addPayment({ emp_id: empId, date, type, amount, note });
+
+        const emps = await API.getEmployees();
+        const emp  = emps.find(em => em.id === empId);
+        alert(`Payment of ${formatCurrency(amount)} recorded for ${emp ? emp.name : empId}.`);
+        window.location.href = empId ? `employee-detail.html?id=${empId}` : 'employees.html';
+    }
+</script>
+</body>
+</html>

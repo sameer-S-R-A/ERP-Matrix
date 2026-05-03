@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Attendance Overview — ERP Management</title>
+    <script>if (!localStorage.getItem('erp_session')) window.location.href = 'login.html';</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="employees.css">
+    <style>
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); }
+        .stat-card.green { border-bottom: 3px solid var(--accent-green); }
+        .stat-card.red { border-bottom: 3px solid var(--primary); }
+        .stat-card.blue { border-bottom: 3px solid var(--secondary); }
+        .stat-card.orange { border-bottom: 3px solid #d97706; }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+<nav class="app-nav">
+    <div class="nav-content">
+        <img src="logo.png" alt="ERP Logo" class="nav-logo" id="navLogo" onerror="this.style.display='none'">
+        <h1>ERP Management App</h1>
+        <span class="module-tag">Attendance Report</span>
+    </div>
+</nav>
+
+<div class="page-wrap">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; flex-wrap:wrap; gap: 12px;">
+        <a href="attendance-mark.html" class="back-btn" style="margin-bottom:0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Back to Daily Attendance
+        </a>
+        <button class="btn btn-secondary" onclick="window.print()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Export / Print Report
+        </button>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <h2>Monthly Record & Overview</h2>
+            <p class="subtitle">View attendance summaries and monthly logs for all workers at a specific site.</p>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="form-group" style="flex-grow:1;min-width:180px;">
+            <label for="monthInput" style="font-size:0.8rem;color:var(--text-muted);">Month</label>
+            <input type="month" id="monthInput" class="filter-select" style="padding:10px 14px;" onchange="render()">
+        </div>
+        <div class="form-group" style="flex-grow:1;min-width:180px;">
+            <label for="siteInput" style="font-size:0.8rem;color:var(--text-muted);">Site</label>
+            <select id="siteInput" class="filter-select" onchange="render()"></select>
+        </div>
+    </div>
+
+    <div class="summary-cards" id="overviewCards">
+        <!-- Rendered via JS -->
+    </div>
+
+    <div class="card" style="padding:0; overflow-x:auto;">
+        <table class="data-table" id="reportTable">
+            <thead>
+                <tr>
+                    <th>Worker Name</th>
+                    <th>Role</th>
+                    <th>Days Present</th>
+                    <th>Half Days</th>
+                    <th>Days Absent</th>
+                    <th>Total Hrs</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="reportTbody">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Select a site to view records.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+    Auth.requireAuth();
+
+    const org = Auth.getOrg();
+    if (org && org.logo) {
+        document.getElementById('navLogo').src = org.logo;
+        document.getElementById('navLogo').style.display = 'block';
+    }
+
+    const monthInput = document.getElementById('monthInput');
+    const siteInput = document.getElementById('siteInput');
+    const tbody = document.getElementById('reportTbody');
+    const cards = document.getElementById('overviewCards');
+
+    // Default to current month
+    const now = new Date();
+    monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Check for URL param
+    const presetSite = getQueryParam('site');
+
+    (async () => {
+        let sites = [];
+        try {
+            if (typeof API !== 'undefined') sites = await API.getSites();
+            else if (typeof DB !== 'undefined') sites = DB.getSites();
+        } catch(e) {}
+        
+        if (sites.length) {
+            sites.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id; opt.textContent = s.name;
+                if (presetSite && s.id == presetSite) opt.selected = true;
+                siteInput.appendChild(opt);
+            });
+            render();
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">No sites found. Please create a site first.</td></tr>';
+        }
+    })();
+
+    async function render() {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Loading monthly data...</td></tr>';
+        cards.innerHTML = '';
+        
+        const site_id = siteInput.value;
+        const monthVal = monthInput.value; // YYYY-MM
+        if (!site_id || !monthVal) return;
+
+        let emps = [];
+        try {
+            if (typeof API !== 'undefined') {
+                const act = await API.getEmployees({ site_id, status: 'active' });
+                const lea = await API.getEmployees({ site_id, status: 'on_leave' });
+                emps = [...act, ...lea];
+            } else if (typeof DB !== 'undefined') {
+                emps = DB.getEmployees({ site_id });
+            }
+        } catch(e) { console.error(e); }
+
+        if (emps.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">No active workers found at this site.</td></tr>';
+            return;
+        }
+
+        let totalPresent = 0, totalAbsent = 0, totalHalf = 0, totalHours = 0;
+        let html = '';
+
+        try {
+            const attPromises = emps.map(e => {
+                if (typeof API !== 'undefined') return API.getAttendance(e.id).catch(() => []);
+                return Promise.resolve(typeof DB !== 'undefined' ? DB.getAttendance(e.id) : []);
+            });
+            const allAtts = await Promise.all(attPromises);
+
+            emps.forEach((e, i) => {
+                const atts = allAtts[i];
+                // Filter by selected month (e.g. "2026-05")
+                const monthAtts = atts.filter(a => a.date.startsWith(monthVal));
+                
+                let stats = { present: 0, absent: 0, half_day: 0, total_hours: 0 };
+                monthAtts.forEach(a => {
+                    if (a.status === 'present') { stats.present++; stats.total_hours += 9; totalPresent++; }
+                    else if (a.status === 'half_day') { stats.half_day++; stats.total_hours += 4; totalHalf++; }
+                    else if (a.status === 'absent') { stats.absent++; totalAbsent++; }
+                });
+                totalHours += stats.total_hours;
+
+                html += `<tr>
+                    <td><strong>${e.name}</strong></td>
+                    <td>${e.role}</td>
+                    <td><span class="badge badge-active">${stats.present}</span></td>
+                    <td><span class="badge badge-onleave">${stats.half_day}</span></td>
+                    <td><span class="badge badge-inactive">${stats.absent}</span></td>
+                    <td><strong>${stats.total_hours}h</strong></td>
+                    <td><a href="employee-detail.html?id=${e.id}" class="btn btn-secondary" style="padding:4px 10px; font-size:0.8rem;">View Profile</a></td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = html;
+
+            cards.innerHTML = `
+                <div class="stat-card blue"><div class="stat-label">Workers</div><div class="stat-value">${emps.length}</div></div>
+                <div class="stat-card green"><div class="stat-label">Total Present (Days)</div><div class="stat-value">${totalPresent}</div></div>
+                <div class="stat-card red"><div class="stat-label">Total Absent (Days)</div><div class="stat-value">${totalAbsent}</div></div>
+                <div class="stat-card orange"><div class="stat-label">Total Work Hours</div><div class="stat-value">${totalHours}h</div></div>
+            `;
+
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--primary);">Failed to load attendance records.</td></tr>';
+            console.error(e);
+        }
+    }
+</script>
+</body>
+</html>

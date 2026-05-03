@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel — ERP Management App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="employees.css">
+    <style>
+        /* Admin-specific nav */
+        .admin-nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            box-shadow: var(--shadow-sm);
+            position: sticky; top: 0; z-index: 200;
+        }
+        .admin-nav-inner {
+            max-width: 1400px; margin: 0 auto;
+            display: flex; align-items: center; gap: 14px;
+            height: 64px;
+        }
+        .admin-nav-brand { display: flex; align-items: center; gap: 12px; }
+        .admin-nav-brand img { width: 38px; height: 38px; object-fit: contain; }
+        .admin-nav-brand h1 {
+            font-size: 1.15rem; font-weight: 700;
+            color: var(--text-main); letter-spacing: -0.01em;
+        }
+        .admin-badge {
+            background: rgba(30,64,175,0.1); color: var(--secondary);
+            padding: 4px 12px; border-radius: 20px; font-size: 0.72rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .admin-nav-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .org-chip {
+            font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
+            background: var(--bg-page); padding: 6px 12px; border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* Tab nav */
+        .tab-nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+        .tab-nav-inner {
+            max-width: 1400px; margin: 0 auto;
+            display: flex; overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tab-nav-inner::-webkit-scrollbar { display: none; }
+        .tab-nav-btn {
+            padding: 14px 18px; border: none; background: none;
+            font-family: inherit; font-size: 0.9rem; font-weight: 500;
+            color: var(--text-muted); cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s; white-space: nowrap;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .tab-nav-btn:hover { color: var(--text-main); }
+        .tab-nav-btn.active { color: var(--secondary); border-bottom-color: var(--secondary); }
+
+        /* Content */
+        .admin-content { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .section-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            margin-bottom: 22px; flex-wrap: wrap; gap: 12px;
+        }
+        .section-header h2 { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; }
+        .section-header p  { color: var(--text-muted); font-size: 0.9rem; margin-top: 3px; }
+
+        /* Table actions */
+        .tbl-btn {
+            padding: 5px 12px; border-radius: 6px; font-size: 0.82rem;
+            font-weight: 600; font-family: inherit; cursor: pointer;
+            border: 1px solid var(--border); background: white;
+            transition: all 0.2s; color: var(--text-muted);
+        }
+        .tbl-btn:hover { background: var(--hover-bg); color: var(--text-main); }
+        .tbl-btn.danger:hover {
+            background: rgba(185,28,28,0.05);
+            border-color: var(--primary); color: var(--primary);
+        }
+        .tbl-actions { display: flex; gap: 6px; }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal {
+            background: white; border-radius: 16px;
+            padding: 28px; width: 100%; max-width: 520px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 22px;
+        }
+        .modal-header h3 { font-size: 1.15rem; font-weight: 700; }
+        .modal-close {
+            width: 30px; height: 30px; border: none;
+            background: var(--bg-page); border-radius: 7px;
+            cursor: pointer; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); transition: all 0.2s; line-height: 1;
+        }
+        .modal-close:hover { background: var(--border); color: var(--text-main); }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+        .modal-error {
+            color: var(--primary); font-size: 0.88rem;
+            display: none; margin-top: 8px;
+        }
+
+        /* Relocate */
+        .relocate-card {
+            background: white; border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 28px;
+            max-width: 620px; box-shadow: var(--shadow-sm);
+        }
+        .rel-preview {
+            background: #f8fafc; border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 16px;
+            margin: 16px 0; display: none;
+        }
+        .rel-preview.show { display: block; }
+        .rel-row {
+            display: flex; justify-content: space-between;
+            align-items: center; font-size: 0.9rem; padding: 5px 0;
+        }
+        .rel-row .lbl { color: var(--text-muted); }
+        .rel-row .val { font-weight: 600; }
+
+        /* Settings alerts */
+        .settings-alert {
+            padding: 10px 14px; border-radius: 8px;
+            font-size: 0.9rem; margin-bottom: 16px; display: none;
+        }
+        .settings-error {
+            background: rgba(185,28,28,0.08);
+            border: 1px solid rgba(185,28,28,0.2);
+            color: var(--primary);
+        }
+        .settings-success {
+            background: rgba(5,150,105,0.08);
+            border: 1px solid rgba(5,150,105,0.2);
+            color: var(--accent-green);
+        }
+
+        /* Quick action buttons in overview */
+        .quick-actions { display: flex; flex-direction: column; gap: 10px; }
+
+        @media (max-width: 600px) {
+            .admin-nav-brand h1 { font-size: 0.95rem; }
+            .admin-badge { display: none; }
+            .org-chip { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Auth guard (immediate, before body renders) -->
+<script>if (!localStorage.getItem('erp_session')) window.location.href = 'login.html';</script>
+
+<!-- Top Nav -->
+<nav class="admin-nav">
+    <div class="admin-nav-inner">
+        <div class="admin-nav-brand">
+            <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
+            <h1>ERP Management App</h1>
+        </div>
+        <span class="admin-badge">Admin Panel</span>
+        <div class="admin-nav-actions">
+            <span class="org-chip" id="orgChip"></span>
+            <a href="index.html" class="btn btn-secondary" style="padding:7px 14px;font-size:0.85rem;">Dashboard</a>
+            <button onclick="Auth.logout()" class="btn btn-danger" style="padding:7px 14px;font-size:0.85rem;">Logout</button>
+        </div>
+    </div>
+</nav>
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+    <div class="tab-nav-inner">
+        <button class="tab-nav-btn active" onclick="showSection('overview')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+            Overview
+        </button>
+        <button class="tab-nav-btn" onclick="showSection('sites')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            Sites
+        </button>
+        <button class="tab-nav-btn" onclick="showSection('departments')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Departments
+        </button>
+        <button class="tab-nav-btn" onclick="showSection('managers')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Site Managers
+        </button>
+        <button class="tab-nav-btn" onclick="showSection('relocate')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+            Relocate Employee
+        </button>
+        <button class="tab-nav-btn" onclick="showSection('settings')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings
+        </button>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="admin-content">
+
+    <!-- ── Overview ── -->
+    <div class="section active" id="section-overview">
+        <div class="section-header">
+            <div><h2>Overview</h2><p>At-a-glance summary of your ERP system</p></div>
+        </div>
+        <div id="overviewStats"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:24px;">
+            <div class="form-card" style="max-width:none;">
+                <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:16px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Quick Actions</h3>
+                <div class="quick-actions">
+                    <a href="employee-form.html" class="btn btn-primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add New Employee
+                    </a>
+                    <button onclick="showSection('sites')" class="btn btn-secondary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                        Manage Sites
+                    </button>
+                    <button onclick="showSection('departments')" class="btn btn-secondary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                        Manage Departments
+                    </button>
+                    <button onclick="showSection('relocate')" class="btn btn-secondary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                        Relocate Employee
+                    </button>
+                    <a href="attendance-mark.html" class="btn btn-secondary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                        Mark Attendance
+                    </a>
+                </div>
+            </div>
+            <div class="form-card" style="max-width:none;">
+                <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:16px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Sites Summary</h3>
+                <div id="sitesSummary"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Sites ── -->
+    <div class="section" id="section-sites">
+        <div class="section-header">
+            <div><h2>Site Management</h2><p>Add, edit or deactivate construction sites</p></div>
+            <button onclick="openSiteModal()" class="btn btn-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add Site
+            </button>
+        </div>
+        <div class="form-card" style="max-width:none;padding:0;overflow:hidden;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Site Name</th><th>Short Name</th><th>Location</th>
+                        <th>Status</th><th>Created</th><th>Workers</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sitesBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Departments ── -->
+    <div class="section" id="section-departments">
+        <div class="section-header">
+            <div><h2>Department Management</h2><p>Organise employees into departments</p></div>
+            <button onclick="openDeptModal()" class="btn btn-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add Department
+            </button>
+        </div>
+        <div class="form-card" style="max-width:none;padding:0;overflow:hidden;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Department Name</th><th>Workers</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="deptsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Managers ── -->
+    <div class="section" id="section-managers">
+        <div class="section-header">
+            <div><h2>Site Managers</h2><p>Manage access for staff taking attendance and managing workers</p></div>
+            <button onclick="openManagerModal()" class="btn btn-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Add Manager
+            </button>
+        </div>
+        <div class="form-card" style="max-width:none;padding:0;overflow:hidden;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Assigned Site</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="managersBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Relocate Employee ── -->
+    <div class="section" id="section-relocate">
+        <div class="section-header">
+            <div><h2>Relocate Employee</h2><p>Move a worker to a different site or department</p></div>
+        </div>
+        <div class="relocate-card">
+            <div class="form-group">
+                <label for="rel-emp">Select Employee</label>
+                <select id="rel-emp" onchange="onEmpSelect()">
+                    <option value="">— Choose an employee —</option>
+                </select>
+            </div>
+
+            <div class="rel-preview" id="relPreview">
+                <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:10px;">Current Assignment</div>
+                <div class="rel-row"><span class="lbl">Site</span><span class="val" id="relCurSite">—</span></div>
+                <div class="rel-row"><span class="lbl">Department</span><span class="val" id="relCurDept">—</span></div>
+            </div>
+
+            <div class="form-group" style="margin-top:16px;">
+                <label for="rel-site">New Site</label>
+                <select id="rel-site"></select>
+            </div>
+            <div class="form-group">
+                <label for="rel-dept">New Department <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+                <select id="rel-dept">
+                    <option value="">— Keep current department —</option>
+                </select>
+            </div>
+
+            <div id="relError" style="color:var(--primary);font-size:0.88rem;display:none;margin-bottom:8px;"></div>
+
+            <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;">
+                <button onclick="doRelocate()" class="btn btn-primary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Confirm Relocation
+                </button>
+                <button onclick="resetRelocate()" class="btn btn-secondary">Reset</button>
+                <a href="dnd-relocate.html" class="btn btn-secondary" style="margin-left:auto;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    Drag &amp; Drop Board
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Settings ── -->
+    <div class="section" id="section-settings">
+        <div class="section-header">
+            <div><h2>Organisation Settings</h2><p>Update your account and organisation details</p></div>
+        </div>
+        <div class="form-card">
+            <div class="settings-alert settings-error" id="settingsError"></div>
+            <div class="settings-alert settings-success" id="settingsSuccess"></div>
+            
+            <div class="form-section-title">Organisation Profile</div>
+            
+            <div class="form-group" style="margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+                <img id="set-logo-preview" src="logo.png" alt="Company Logo" 
+                     onerror="this.src='https://placehold.co/80x80/e2e8f0/64748b?text=LOGO'" 
+                     style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); background: white;">
+                <div>
+                    <label for="set-logo" class="btn btn-secondary" style="cursor: pointer; display: inline-block;">Upload Logo</label>
+                    <input type="file" id="set-logo" accept="image/*" style="display: none;" onchange="previewLogo(event)">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">Recommended: 200x200px (PNG/JPG)</p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Organisation Name</label>
+                    <input type="text" id="set-org-name" placeholder="Your organisation name">
+                </div>
+                <div class="form-group">
+                    <label>Admin Email</label>
+                    <input type="email" id="set-email" placeholder="admin@example.com">
+                </div>
+            </div>
+
+            <div class="form-section-title">Public Contact Information</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: -10px 0 16px;">This information will be displayed on the dashboard's "Contact Us" card.</p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Director Name</label>
+                    <input type="text" id="set-contact-name" placeholder="e.g. John Doe (Director)">
+                </div>
+                <div class="form-group">
+                    <label>Public Email</label>
+                    <input type="email" id="set-contact-email" placeholder="contact@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Primary Phone</label>
+                    <input type="text" id="set-contact-phone1" placeholder="+1-234-567-8900">
+                </div>
+                <div class="form-group">
+                    <label>Secondary Phone (Optional)</label>
+                    <input type="text" id="set-contact-phone2" placeholder="+1-987-654-3210">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Office Address</label>
+                    <input type="text" id="set-contact-address" placeholder="123 Business Road, City, Country">
+                </div>
+            </div>
+
+            <div class="form-section-title">Change Password</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" id="set-cur-pw" placeholder="Leave blank to keep unchanged">
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="set-new-pw" placeholder="New password (min 6 chars)">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button onclick="saveSettings()" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /admin-content -->
+
+<!-- ── Site Modal ── -->
+<div class="modal-backdrop" id="siteModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="siteModalTitle">Add Site</h3>
+            <button class="modal-close" onclick="closeSiteModal()">✕</button>
+        </div>
+        <div class="form-group">
+            <label>Full Site Name *</label>
+            <input type="text" id="sm-name" placeholder="e.g. NBCC Sarojininagar PKG_IXB">
+        </div>
+        <div class="form-group">
+            <label>Short Name *</label>
+            <input type="text" id="sm-short" placeholder="e.g. Sarojininagar">
+        </div>
+        <div class="form-group">
+            <label>Location / City</label>
+            <input type="text" id="sm-location" placeholder="e.g. New Delhi">
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="sm-status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+        <p class="modal-error" id="siteModalError"></p>
+        <div class="modal-actions">
+            <button onclick="closeSiteModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="saveSite()" class="btn btn-primary">Save Site</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Department Modal ── -->
+<div class="modal-backdrop" id="deptModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="deptModalTitle">Add Department</h3>
+            <button class="modal-close" onclick="closeDeptModal()">✕</button>
+        </div>
+        <div class="form-group">
+            <label>Department Name *</label>
+            <input type="text" id="dm-name" placeholder="e.g. Civil Works, Electrical…">
+        </div>
+        <p class="modal-error" id="deptModalError"></p>
+        <div class="modal-actions">
+            <button onclick="closeDeptModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="saveDept()" class="btn btn-primary">Save Department</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Manager Modal ── -->
+<div class="modal-backdrop" id="managerModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="managerModalTitle">Add Site Manager</h3>
+            <button class="modal-close" onclick="closeManagerModal()">✕</button>
+        </div>
+        <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="mgr-name" placeholder="e.g. John Doe">
+        </div>
+        <div class="form-group">
+            <label>Email Address *</label>
+            <input type="email" id="mgr-email" placeholder="manager@example.com">
+        </div>
+        <div class="form-group">
+            <label>Assign to Site *</label>
+            <select id="mgr-site">
+                <option value="">— Select a site —</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Temporary Password</label>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="mgr-password" readonly style="background:#f8fafc; flex-grow:1;">
+                <button class="btn btn-secondary" onclick="generateTempPassword()" style="white-space:nowrap;">Generate New</button>
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Copy this password and share it with the manager securely.</p>
+        </div>
+        <p class="modal-error" id="managerModalError"></p>
+        <div class="modal-actions">
+            <button onclick="closeManagerModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="saveManager()" class="btn btn-primary">Save Manager</button>
+        </div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+    Auth.requireAuth();
+
+    const session = Auth.getSession();
+    document.getElementById('orgChip').textContent = session ? session.org_name : '';
+    
+    // Load logo into navbar
+    const org = Auth.getOrg();
+    if (org && org.logo) {
+        const navImg = document.querySelector('.admin-nav-brand img');
+        if (navImg) { navImg.src = org.logo; navImg.style.display = 'block'; }
+    }
+
+    const SECTIONS = ['overview','sites','departments','managers','relocate','settings'];
+
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-nav-btn').forEach((b, i) => b.classList.toggle('active', SECTIONS[i] === id));
+        document.getElementById('section-' + id).classList.add('active');
+        if (id === 'overview')     renderOverview();
+        if (id === 'sites')        renderSites();
+        if (id === 'departments')  renderDepts();
+        if (id === 'managers')     renderManagers();
+        if (id === 'relocate')     initRelocate();
+        if (id === 'settings')     loadSettings();
+    }
+
+    // ── Overview ──
+    async function renderOverview() {
+        try {
+            let total=0, active=0, on_leave=0, deptsCnt=0, sites=[], emps=[];
+            if (typeof API !== 'undefined') {
+                sites = await API.getSites();
+                emps = await API.getEmployees();
+                deptsCnt = (await API.getDepartments()).length;
+            } else if (typeof DB !== 'undefined') {
+                sites = DB.getSites(); emps = DB.getEmployees(); deptsCnt = DB.getDepartments().length;
+            }
+            total = emps.length;
+            active = emps.filter(e => e.status === 'active').length;
+            on_leave = emps.filter(e => e.status === 'on_leave').length;
+
+            document.getElementById('overviewStats').innerHTML = `
+                <div class="stats-row">
+                    <div class="stat-card"><div class="label">Total Employees</div><div class="value">${total}</div></div>
+                    <div class="stat-card green"><div class="label">Active</div><div class="value">${active}</div></div>
+                    <div class="stat-card"><div class="label">On Leave</div><div class="value">${on_leave}</div></div>
+                    <div class="stat-card blue"><div class="label">Active Sites</div><div class="value">${sites.length}</div></div>
+                    <div class="stat-card"><div class="label">Departments</div><div class="value">${deptsCnt}</div></div>
+                </div>`;
+            document.getElementById('sitesSummary').innerHTML = sites.map(s => {
+                const cnt = emps.filter(e => e.site_id == s.id).length;
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+                    <div>
+                        <div style="font-weight:600;font-size:0.93rem;">${s.name}</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);">${s.location || '—'}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:0.85rem;color:var(--text-muted);">${cnt} workers</span>
+                        ${statusBadge(s.status)}
+                    </div>
+                </div>`;
+            }).join('') || '<p style="color:var(--text-muted);font-size:0.9rem;">No sites yet.</p>';
+        } catch(e) { console.error('Overview error', e); }
+    }
+    renderOverview();
+
+    // ── Sites ──
+    let _editSiteId = null;
+
+    async function renderSites() {
+        try {
+            let sites = []; let emps = [];
+            if (typeof API !== 'undefined') {
+                sites = await API.getSites();
+                emps = await API.getEmployees();
+            } else if (typeof DB !== 'undefined') {
+                sites = DB.getSites();
+                emps = DB.getEmployees();
+            }
+            document.getElementById('sitesBody').innerHTML = sites.length
+                ? sites.map(s => {
+                    const cnt = emps.filter(e => e.site_id == s.id).length;
+                    const nm  = s.name.replace(/'/g, "\\'");
+                    return `<tr>
+                        <td><strong>${s.name}</strong></td>
+                        <td>${s.short}</td>
+                        <td>${s.location || '—'}</td>
+                        <td>${statusBadge(s.status)}</td>
+                        <td>${formatDate(s.created_at)}</td>
+                        <td>${cnt}</td>
+                        <td><div class="tbl-actions">
+                            <button class="tbl-btn" onclick="openSiteModal(${s.id})">Edit</button>
+                            <button class="tbl-btn danger" onclick="confirmDeleteSite(${s.id}, '${nm}')">Delete</button>
+                        </div></td>
+                    </tr>`;
+                }).join('')
+                : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">No sites added yet. Click "Add Site" to get started.</td></tr>`;
+        } catch(e) { console.error(e); }
+    }
+
+    async function openSiteModal(id) {
+        _editSiteId = id || null;
+        document.getElementById('siteModalTitle').textContent = id ? 'Edit Site' : 'Add Site';
+        document.getElementById('siteModalError').style.display = 'none';
+        let s = null;
+        if (id) {
+            try {
+                if (typeof API !== 'undefined') { const sites = await API.getSites(); s = sites.find(x => x.id == id); }
+                else if (typeof DB !== 'undefined') s = DB.getSite(id);
+            } catch(e) {}
+        }
+        document.getElementById('sm-name').value     = s ? s.name     : '';
+        document.getElementById('sm-short').value    = s ? s.short    : '';
+        document.getElementById('sm-location').value = s ? (s.location || '') : '';
+        document.getElementById('sm-status').value   = s ? s.status   : 'active';
+        document.getElementById('siteModal').classList.add('open');
+        document.getElementById('sm-name').focus();
+    }
+    function closeSiteModal() { document.getElementById('siteModal').classList.remove('open'); }
+    
+    async function saveSite() {
+        const name     = document.getElementById('sm-name').value.trim();
+        const short    = document.getElementById('sm-short').value.trim();
+        const location = document.getElementById('sm-location').value.trim();
+        const status   = document.getElementById('sm-status').value;
+        const errEl    = document.getElementById('siteModalError');
+        if (!name || !short) { errEl.textContent = 'Name and short name are required.'; errEl.style.display = 'block'; return; }
+        try {
+            if (typeof API !== 'undefined') {
+                _editSiteId ? await API.updateSite(_editSiteId, { name, short, location, status })
+                            : await API.addSite({ name, short, location, status });
+            } else if (typeof DB !== 'undefined') {
+                _editSiteId ? DB.updateSite(_editSiteId, { name, short, location, status })
+                            : DB.addSite({ name, short, location, status });
+            }
+        } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; return; }
+        closeSiteModal(); renderSites(); renderOverview();
+    }
+    
+    async function confirmDeleteSite(id, name) {
+        if (!confirm(`Delete site "${name}"?\n\nEmployees assigned here will need to be reassigned manually.`)) return;
+        try {
+            if (typeof API !== 'undefined') await API.deleteSite(id);
+            else if (typeof DB !== 'undefined') DB.deleteSite(id);
+        } catch(e) {}
+        renderSites(); renderOverview();
+    }
+
+    // ── Departments ──
+    let _editDeptId = null;
+
+    async function renderDepts() {
+        try {
+            let depts = []; let emps = [];
+            if (typeof API !== 'undefined') {
+                depts = await API.getDepartments();
+                emps = await API.getEmployees();
+            } else if (typeof DB !== 'undefined') {
+                depts = DB.getDepartments();
+                emps = DB.getEmployees();
+            }
+            document.getElementById('deptsBody').innerHTML = depts.length
+                ? depts.map(d => {
+                    const cnt = emps.filter(e => e.department_id == d.id).length;
+                    const nm  = d.name.replace(/'/g, "\\'");
+                    return `<tr>
+                        <td><strong>${d.name}</strong></td>
+                        <td>${cnt}</td>
+                        <td><div class="tbl-actions">
+                            <button class="tbl-btn" onclick="openDeptModal(${d.id})">Edit</button>
+                            <button class="tbl-btn danger" onclick="confirmDeleteDept(${d.id}, '${nm}')">Delete</button>
+                        </div></td>
+                    </tr>`;
+                }).join('')
+                : `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:32px;">No departments yet.</td></tr>`;
+        } catch(e) {}
+    }
+
+    async function openDeptModal(id) {
+        _editDeptId = id || null;
+        document.getElementById('deptModalTitle').textContent = id ? 'Edit Department' : 'Add Department';
+        document.getElementById('deptModalError').style.display = 'none';
+        let d = null;
+        if (id) {
+            try {
+                if (typeof API !== 'undefined') { const depts = await API.getDepartments(); d = depts.find(x => x.id == id); }
+                else if (typeof DB !== 'undefined') d = DB.getDepartment(id);
+            } catch(e) {}
+        }
+        document.getElementById('dm-name').value = d ? d.name : '';
+        document.getElementById('deptModal').classList.add('open');
+        document.getElementById('dm-name').focus();
+    }
+    
+    function closeDeptModal() { document.getElementById('deptModal').classList.remove('open'); }
+    
+    async function saveDept() {
+        const name  = document.getElementById('dm-name').value.trim();
+        const errEl = document.getElementById('deptModalError');
+        if (!name) { errEl.textContent = 'Department name is required.'; errEl.style.display = 'block'; return; }
+        try {
+            if (typeof API !== 'undefined') {
+                _editDeptId ? await API.updateDepartment(_editDeptId, { name }) : await API.addDepartment({ name });
+            } else if (typeof DB !== 'undefined') {
+                _editDeptId ? DB.updateDepartment(_editDeptId, { name }) : DB.addDepartment({ name });
+            }
+        } catch(e) {}
+        closeDeptModal(); renderDepts();
+    }
+    
+    async function confirmDeleteDept(id, name) {
+        if (!confirm(`Delete department "${name}"?`)) return;
+        try {
+            if (typeof API !== 'undefined') await API.deleteDepartment(id);
+            else if (typeof DB !== 'undefined') DB.deleteDepartment(id);
+        } catch(e) {}
+        renderDepts();
+    }
+
+    // ── Managers ──
+    async function renderManagers() {
+        let managers = [];
+        try { managers = JSON.parse(localStorage.getItem('erp_managers')) || []; } catch(e){}
+        let sites = [];
+        try { 
+            if (typeof API !== 'undefined') sites = await API.getSites();
+            else if (typeof DB !== 'undefined') sites = DB.getSites();
+        } catch(e){}
+        
+        document.getElementById('managersBody').innerHTML = managers.length
+            ? managers.map(m => {
+                const site = sites.find(s => s.id == m.site_id);
+                const siteName = site ? site.name : '—';
+                const nm = m.name.replace(/'/g, "\\'");
+                return `<tr>
+                    <td><strong>${m.name}</strong></td>
+                    <td>${m.email}</td>
+                    <td>${siteName}</td>
+                    <td><div class="tbl-actions">
+                        <button class="tbl-btn danger" onclick="confirmDeleteManager('${m.email}', '${nm}')">Remove Access</button>
+                    </div></td>
+                </tr>`;
+            }).join('')
+            : `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:32px;">No site managers added yet.</td></tr>`;
+    }
+
+    async function openManagerModal() {
+        document.getElementById('managerModalError').style.display = 'none';
+        document.getElementById('mgr-name').value = '';
+        document.getElementById('mgr-email').value = '';
+        
+        const siteSel = document.getElementById('mgr-site');
+        let sites = [];
+        try { 
+            if (typeof API !== 'undefined') sites = await API.getSites();
+            else if (typeof DB !== 'undefined') sites = DB.getSites();
+        } catch(e){}
+        siteSel.innerHTML = '<option value="">— Select a site —</option>' + 
+                            sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                            
+        generateTempPassword();
+        document.getElementById('managerModal').classList.add('open');
+        document.getElementById('mgr-name').focus();
+    }
+
+    function closeManagerModal() { document.getElementById('managerModal').classList.remove('open'); }
+    
+    function generateTempPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+        let pass = '';
+        for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+        document.getElementById('mgr-password').value = pass;
+    }
+
+    function saveManager() {
+        const name  = document.getElementById('mgr-name').value.trim();
+        const email = document.getElementById('mgr-email').value.trim();
+        const siteId = document.getElementById('mgr-site').value;
+        const pwd = document.getElementById('mgr-password').value;
+        const errEl = document.getElementById('managerModalError');
+        
+        if (!name || !email || !siteId) { 
+            errEl.textContent = 'Name, email, and site are required.'; 
+            errEl.style.display = 'block'; 
+            return; 
+        }
+        
+        let managers = [];
+        try { managers = JSON.parse(localStorage.getItem('erp_managers')) || []; } catch(e){}
+        if (managers.find(m => m.email === email)) {
+            errEl.textContent = 'A manager with this email already exists.'; 
+            errEl.style.display = 'block'; 
+            return;
+        }
+        
+        managers.push({ name, email, site_id: siteId, password: pwd, created_at: new Date().toISOString() });
+        localStorage.setItem('erp_managers', JSON.stringify(managers));
+        
+        closeManagerModal(); 
+        renderManagers();
+    }
+    
+    function confirmDeleteManager(email, name) {
+        if (!confirm(`Revoke access for manager "${name}"?`)) return;
+        let managers = [];
+        try { managers = JSON.parse(localStorage.getItem('erp_managers')) || []; } catch(e){}
+        managers = managers.filter(m => m.email !== email);
+        localStorage.setItem('erp_managers', JSON.stringify(managers));
+        renderManagers();
+    }
+
+    // ── Relocate ──
+    async function initRelocate() {
+        const empSel = document.getElementById('rel-emp');
+        const presetId = getQueryParam('emp');
+        
+        let emps=[], sites=[], depts=[];
+        try {
+            if (typeof API !== 'undefined') { emps = await API.getEmployees(); sites = await API.getSites(); depts = await API.getDepartments(); }
+            else if (typeof DB !== 'undefined') { emps = DB.getEmployees(); sites = DB.getSites(); depts = DB.getDepartments(); }
+        } catch(e){}
+        
+        window._relData = { emps, sites, depts };
+        
+        empSel.innerHTML = '<option value="">— Choose an employee —</option>' +
+            emps.map(e => {
+                const site = sites.find(s => s.id == e.site_id);
+                return `<option value="${e.id}">${e.name} (${e.id}) — ${site ? site.short : '?'}</option>`;
+            }).join('');
+        if (presetId) { empSel.value = presetId; onEmpSelect(); }
+
+        const siteSel = document.getElementById('rel-site');
+        siteSel.innerHTML = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+        const deptSel = document.getElementById('rel-dept');
+        deptSel.innerHTML = '<option value="">— Keep current department —</option>' +
+            depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+        if (!presetId) document.getElementById('relPreview').classList.remove('show');
+        document.getElementById('relError').style.display = 'none';
+    }
+
+    function onEmpSelect() {
+        const id = document.getElementById('rel-emp').value;
+        if (!id) { document.getElementById('relPreview').classList.remove('show'); return; }
+        
+        const { emps, sites, depts } = window._relData || {};
+        const emp  = emps.find(e => e.id == id);
+        if (!emp) return;
+        
+        const site = sites.find(s => s.id == emp.site_id);
+        const dept = depts.find(d => d.id == emp.department_id);
+        
+        document.getElementById('relCurSite').textContent = site ? site.name : '—';
+        document.getElementById('relCurDept').textContent = dept ? dept.name : '—';
+        document.getElementById('relPreview').classList.add('show');
+        document.getElementById('rel-site').value = emp.site_id;
+        if (emp.department_id) document.getElementById('rel-dept').value = emp.department_id;
+    }
+
+    async function doRelocate() {
+        const errEl  = document.getElementById('relError');
+        errEl.style.display = 'none';
+        const empId  = document.getElementById('rel-emp').value;
+        const siteId = document.getElementById('rel-site').value;
+        const deptId = document.getElementById('rel-dept').value;
+        if (!empId) { errEl.textContent = 'Please select an employee.'; errEl.style.display = 'block'; return; }
+        
+        const { emps, sites, depts } = window._relData || {};
+        const emp  = emps.find(e => e.id == empId);
+        
+        if (emp.site_id == siteId && (!deptId || emp.department_id == deptId)) {
+            errEl.textContent = 'No change detected — please select a different site or department.';
+            errEl.style.display = 'block'; return;
+        }
+        
+        try {
+            if (typeof API !== 'undefined') {
+                await API.relocateEmployee(empId, siteId, deptId || null);
+            } else if (typeof DB !== 'undefined') {
+                DB.relocateEmployee(empId, siteId, deptId || null);
+            }
+        } catch(e) {}
+        
+        const newSite = sites.find(s => s.id == siteId);
+        const newDept = deptId ? depts.find(d => d.id == deptId) : null;
+        alert(`✓ ${emp.name} has been relocated to ${newSite.name}${newDept ? ' / ' + newDept.name : ''}.`);
+        resetRelocate();
+    }
+
+    function resetRelocate() {
+        document.getElementById('rel-emp').value = '';
+        initRelocate();
+    }
+
+    // ── Settings ──
+    function previewLogo(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('set-logo-preview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function loadSettings() {
+        const org = Auth.getOrg();
+        if (!org) return;
+        document.getElementById('set-org-name').value = org.org_name;
+        document.getElementById('set-email').value    = org.email;
+        if (org.logo) {
+            document.getElementById('set-logo-preview').src = org.logo;
+        }
+        document.getElementById('set-contact-name').value    = org.contact_name || '';
+        document.getElementById('set-contact-email').value   = org.contact_email || '';
+        document.getElementById('set-contact-phone1').value  = org.contact_phone1 || '';
+        document.getElementById('set-contact-phone2').value  = org.contact_phone2 || '';
+        document.getElementById('set-contact-address').value = org.contact_address || '';
+
+        document.getElementById('set-cur-pw').value   = '';
+        document.getElementById('set-new-pw').value   = '';
+    }
+
+    function saveSettings() {
+        const errEl  = document.getElementById('settingsError');
+        const succEl = document.getElementById('settingsSuccess');
+        errEl.style.display = 'none'; succEl.style.display = 'none';
+
+        const org_name = document.getElementById('set-org-name').value.trim();
+        const email    = document.getElementById('set-email').value.trim();
+        const curPw    = document.getElementById('set-cur-pw').value;
+        const newPw    = document.getElementById('set-new-pw').value;
+        const logoSrc  = document.getElementById('set-logo-preview').src;
+
+        const contact_name    = document.getElementById('set-contact-name').value.trim();
+        const contact_email   = document.getElementById('set-contact-email').value.trim();
+        const contact_phone1  = document.getElementById('set-contact-phone1').value.trim();
+        const contact_phone2  = document.getElementById('set-contact-phone2').value.trim();
+        const contact_address = document.getElementById('set-contact-address').value.trim();
+
+        function showErr(msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
+
+        if (!org_name || !email) { showErr('Organisation name and email are required.'); return; }
+        
+        const updates = { 
+            org_name, email,
+            contact_name, contact_email, contact_phone1, contact_phone2, contact_address 
+        };
+        if (!logoSrc.includes('placehold.co')) {
+            updates.logo = logoSrc;
+        }
+
+        if (newPw) {
+            const currentOrg = Auth.getOrg();
+            if (curPw !== currentOrg.password) { showErr('Current password is incorrect.'); return; }
+            if (newPw.length < 6) { showErr('New password must be at least 6 characters.'); return; }
+            updates.password = newPw;
+        }
+        Auth.updateOrg(updates);
+        document.getElementById('orgChip').textContent = org_name;
+        
+        if (updates.logo) {
+            const navImg = document.querySelector('.admin-nav-brand img');
+            if (navImg) { navImg.src = updates.logo; navImg.style.display = 'block'; }
+        }
+
+        document.getElementById('set-cur-pw').value = '';
+        document.getElementById('set-new-pw').value = '';
+        succEl.textContent = 'Settings saved successfully.'; succEl.style.display = 'block';
+    }
+
+    // Close modals on backdrop click
+    ['siteModal','deptModal','managerModal'].forEach(id => {
+        document.getElementById(id).addEventListener('click', e => {
+            if (e.target.id === id) document.getElementById(id).classList.remove('open');
+        });
+    });
+
+    // Enter key in modals
+    document.getElementById('sm-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveSite(); });
+    document.getElementById('dm-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveDept(); });
+
+    // Check for URL param to open a specific section
+    const startSection = getQueryParam('section');
+    if (startSection && SECTIONS.includes(startSection)) showSection(startSection);
+</script>
+</body>
+</html>

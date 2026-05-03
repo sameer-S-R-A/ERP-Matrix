@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — ERP Management App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #B91C1C;
+            --primary-dk: #991b1b;
+            --secondary: #1E40AF;
+            --green: #059669;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --muted: #64748b;
+            --radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1E40AF 0%, #B91C1C 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+        }
+        .logo-area {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .logo-area img {
+            width: 64px; height: 64px; object-fit: contain;
+            margin-bottom: 12px; display: block; margin-inline: auto;
+        }
+        .logo-area h1 {
+            font-size: 1.4rem; font-weight: 700;
+            color: var(--text); letter-spacing: -0.02em;
+        }
+        .logo-area p { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+        .tabs {
+            display: grid; grid-template-columns: 1fr 1fr;
+            background: #f1f5f9; border-radius: 10px;
+            padding: 4px; margin-bottom: 28px;
+        }
+        .tab-btn {
+            padding: 10px; border: none; background: none;
+            border-radius: 8px; font-family: inherit;
+            font-size: 0.95rem; font-weight: 600;
+            color: var(--muted); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: white; color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+        input[type="text"], input[type="email"], input[type="password"] {
+            padding: 11px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-family: inherit; font-size: 0.95rem;
+            outline: none; transition: all 0.2s; color: var(--text);
+        }
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(185,28,28,0.1);
+        }
+        .btn-submit {
+            width: 100%; padding: 13px;
+            background: var(--primary); color: white;
+            border: none; border-radius: var(--radius);
+            font-family: inherit; font-size: 1rem;
+            font-weight: 700; cursor: pointer;
+            transition: all 0.2s; margin-top: 8px;
+        }
+        .btn-submit:hover { background: var(--primary-dk); transform: translateY(-1px); }
+        .switch-link {
+            text-align: center; margin-top: 20px;
+            font-size: 0.9rem; color: var(--muted);
+        }
+        .switch-link a { color: var(--primary); font-weight: 600; text-decoration: none; cursor: pointer; }
+        .alert {
+            padding: 10px 14px; border-radius: 8px;
+            font-size: 0.9rem; margin-bottom: 16px; display: none;
+        }
+        .alert-error {
+            background: rgba(185,28,28,0.08);
+            border: 1px solid rgba(185,28,28,0.2);
+            color: var(--primary);
+        }
+        .alert-success {
+            background: rgba(5,150,105,0.08);
+            border: 1px solid rgba(5,150,105,0.2);
+            color: var(--green);
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo-area">
+        <img src="logo.png" alt="ERP Logo" onerror="this.style.display='none'">
+        <h1>ERP Management App</h1>
+        <p>Sign in to your organisation portal</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="loginTabBtn" onclick="switchTab('login')">Login</button>
+        <button class="tab-btn" id="registerTabBtn" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login Tab -->
+    <div class="tab-pane active" id="pane-login">
+        <div class="alert alert-error" id="login-error"></div>
+        <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" placeholder="admin@organisation.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <button class="btn-submit" onclick="doLogin()">Sign In</button>
+        <div class="switch-link">
+            No account? <a onclick="switchTab('register')">Register your organisation</a>
+        </div>
+    </div>
+
+    <!-- Register Tab -->
+    <div class="tab-pane" id="pane-register">
+        <div class="alert alert-error" id="register-error"></div>
+        <div class="alert alert-success" id="register-success"></div>
+        <div class="form-group">
+            <label for="reg-org">Organisation Name</label>
+            <input type="text" id="reg-org" placeholder="e.g. ABC Construction Ltd">
+        </div>
+        <div class="form-group">
+            <label for="reg-email">Admin Email Address</label>
+            <input type="email" id="reg-email" placeholder="admin@organisation.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+            <label for="reg-password">Password</label>
+            <input type="password" id="reg-password" placeholder="Choose a strong password (min 6 chars)" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label for="reg-confirm">Confirm Password</label>
+            <input type="password" id="reg-confirm" placeholder="Re-enter your password" autocomplete="new-password">
+        </div>
+        <button class="btn-submit" onclick="doRegister()">Create Organisation Account</button>
+        <div class="switch-link">
+            Already registered? <a onclick="switchTab('login')">Sign in</a>
+        </div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+    if (Auth.getSession()) window.location.href = 'index.html';
+    if (Auth.getOrg()) switchTab('login');
+
+    function switchTab(tab) {
+        document.getElementById('loginTabBtn').classList.toggle('active', tab === 'login');
+        document.getElementById('registerTabBtn').classList.toggle('active', tab === 'register');
+        document.getElementById('pane-login').classList.toggle('active', tab === 'login');
+        document.getElementById('pane-register').classList.toggle('active', tab === 'register');
+    }
+
+    function showAlert(id, msg, type) {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.style.display = 'block';
+        if (type) { el.className = 'alert alert-' + type; }
+    }
+    function hideAlert(id) { document.getElementById(id).style.display = 'none'; }
+
+    function doLogin() {
+        hideAlert('login-error');
+        const email    = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        if (!email || !password) { showAlert('login-error', 'Please fill in all fields.', 'error'); return; }
+        const result = Auth.login(email, password);
+        if (result.error) { showAlert('login-error', result.error, 'error'); return; }
+        window.location.href = 'index.html';
+    }
+
+    function doRegister() {
+        hideAlert('register-error');
+        hideAlert('register-success');
+        const org  = document.getElementById('reg-org').value.trim();
+        const email = document.getElementById('reg-email').value.trim();
+        const pw    = document.getElementById('reg-password').value;
+        const pw2   = document.getElementById('reg-confirm').value;
+        if (!org || !email || !pw) { showAlert('register-error', 'Please fill in all fields.', 'error'); return; }
+        if (pw.length < 6)         { showAlert('register-error', 'Password must be at least 6 characters.', 'error'); return; }
+        if (pw !== pw2)            { showAlert('register-error', 'Passwords do not match.', 'error'); return; }
+        const result = Auth.register(org, email, pw);
+        if (result.error) { showAlert('register-error', result.error, 'error'); return; }
+        showAlert('register-success', 'Account created! Signing you in…', 'success');
+        Auth.login(email, pw);
+        setTimeout(() => window.location.href = 'index.html', 800);
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        const active = document.querySelector('.tab-pane.active').id;
+        if (active === 'pane-login') doLogin();
+        else doRegister();
+    });
+</script>
+</body>
+</html>

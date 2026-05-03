@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relocate Workers — ERP Management App</title>
+    <script>if (!localStorage.getItem('erp_session')) window.location.href = 'login.html';</script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#059669">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="employees.css">
+    <style>
+        /* ── Board layout ── */
+        .board {
+            display: flex;
+            gap: 18px;
+            overflow-x: auto;
+            padding: 4px 0 20px;
+            align-items: flex-start;
+        }
+        .site-col {
+            min-width: 280px;
+            max-width: 320px;
+            flex-shrink: 0;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .site-header {
+            background: var(--primary);
+            color: white;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .site-header .site-short {
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        /* ── Dept zone ── */
+        .dept-zone {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 10px 6px;
+            min-height: 80px;
+            transition: background 0.15s;
+        }
+        .dept-zone:last-child { border-bottom: none; }
+        .dept-zone.drag-over {
+            background: #ecfdf5;
+            outline: 2px dashed var(--accent-green);
+            outline-offset: -2px;
+        }
+        .dept-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        /* ── Employee card ── */
+        .emp-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            margin-bottom: 6px;
+            cursor: grab;
+            user-select: none;
+            transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+            font-size: 0.85rem;
+        }
+        .emp-chip:active { cursor: grabbing; }
+        .emp-chip.dragging { opacity: 0.35; border-color: var(--accent-green); }
+        .emp-chip:hover { box-shadow: var(--shadow-sm); border-color: #94a3b8; }
+        .emp-chip .chip-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--secondary);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .emp-chip .chip-info { flex: 1; overflow: hidden; }
+        .emp-chip .chip-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .emp-chip .chip-role { font-size: 0.75rem; color: var(--text-muted); }
+        .drag-handle {
+            color: #cbd5e1;
+            flex-shrink: 0;
+            line-height: 0;
+        }
+        .empty-zone {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            padding: 12px 0;
+        }
+        /* ── Toast ── */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #1e293b;
+            color: white;
+            padding: 12px 22px;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            z-index: 9999;
+            white-space: nowrap;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast.success { background: #059669; }
+        #toast.error   { background: #b91c1c; }
+        /* ── Filter bar extra ── */
+        .legend {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+        .legend span { display: flex; align-items: center; gap: 5px; }
+        .leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+        /* Unassigned dept zone */
+        .site-col .dept-zone.unassigned { background: #fafafa; }
+        .dept-zone.unassigned .dept-label { color: #94a3b8; }
+        
+        .mode-btn { background: transparent; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+        .mode-btn.active { background: white; color: var(--text-main); box-shadow: var(--shadow-sm); }
+    </style>
+</head>
+<body>
+
+<nav class="app-nav">
+    <div class="nav-content">
+        <img src="logo.png" alt="ERP Logo" class="nav-logo" onerror="this.src='https://placehold.co/42x42/059669/white?text=ERP'">
+        <h1>ERP Management App</h1>
+        <span class="module-tag">Relocate Workers</span>
+    </div>
+</nav>
+
+<div class="page-wrap">
+    <a href="admin.html" class="back-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to Admin
+    </a>
+
+    <div class="page-header">
+        <div>
+            <h2>Drag &amp; Drop Relocation</h2>
+            <p class="subtitle">Drag an employee card to a new site column or department zone to relocate them.</p>
+        </div>
+    </div>
+
+    <div class="filter-bar" style="align-items:center;flex-wrap:wrap;gap:16px;">
+        <select class="filter-select" id="statusFilter" onchange="buildBoard()">
+            <option value="active">Active Workers</option>
+            <option value="on_leave">On Leave</option>
+            <option value="">All Workers</option>
+        </select>
+        
+        <div class="toggle-group" style="display:flex; background: #e2e8f0; border-radius: 8px; padding: 4px;">
+            <button class="mode-btn active" id="btnModeSites" onclick="setMode('sites')">Between Sites</button>
+            <button class="mode-btn" id="btnModeDepts" onclick="setMode('departments')">Between Departments</button>
+        </div>
+
+        <div class="legend">
+            <span><span class="leg-dot" style="background:var(--secondary)"></span> Name initial</span>
+            <span id="dragLegend">Drag card → drop on site column to relocate</span>
+        </div>
+    </div>
+
+    <div class="board" id="board"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+    Auth.requireAuth();
+
+    const board = document.getElementById('board');
+
+    // dragState tracks which employee is being dragged
+    const dragState = { empId: null, fromSiteId: null, fromDeptId: null };
+    let currentMode = getQueryParam('mode') || 'sites';
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('btnModeSites').classList.toggle('active', mode === 'sites');
+        document.getElementById('btnModeDepts').classList.toggle('active', mode === 'departments');
+        document.getElementById('dragLegend').textContent = mode === 'sites' ? 'Drag card → drop on site column to relocate' : 'Drag card → drop on department column to relocate';
+        buildBoard();
+    }
+
+    async function buildBoard() {
+        const status = document.getElementById('statusFilter').value;
+        let sites = [], depts = [], allEmps = [];
+
+        try {
+            if (typeof API !== 'undefined') {
+                [sites, depts, allEmps] = await Promise.all([
+                    API.getSites(),
+                    API.getDepartments(),
+                    API.getEmployees({ status: status || undefined })
+                ]);
+            } else if (typeof DB !== 'undefined') {
+                sites = DB.getSites();
+                depts = DB.getDepartments();
+                allEmps = DB.getEmployees({ status: status || undefined });
+            }
+        } catch(e) { console.error(e); }
+
+        board.innerHTML = '';
+
+        if (currentMode === 'sites') {
+            sites.forEach(site => {
+                const zoneEmps = allEmps.filter(e => e.site_id == site.id);
+                
+                const col = document.createElement('div');
+                col.className = 'site-col';
+                col.innerHTML = `
+                    <div class="site-header">
+                        <span>${site.name}</span>
+                        <span class="site-short">${site.short || ''}</span>
+                    </div>`;
+
+                const zone = document.createElement('div');
+                zone.className = 'dept-zone';
+                zone.style.minHeight = '200px';
+                zone.dataset.siteId = site.id;
+                zone.dataset.deptId = 'keep';
+
+                zone.innerHTML = zoneEmps.length === 0
+                            ? '<div class="empty-zone">Drop here</div>'
+                            : zoneEmps.map(e => chipHTML(e)).join('');
+
+                zone.addEventListener('dragover', onDragOver);
+                zone.addEventListener('dragleave', onDragLeave);
+                zone.addEventListener('drop', onDrop);
+
+                col.appendChild(zone);
+                board.appendChild(col);
+            });
+        } else {
+            const zones = [...depts, { id: null, name: 'Unassigned' }];
+            zones.forEach(dept => {
+                const zoneEmps = allEmps.filter(e => dept.id === null ? !e.department_id : e.department_id == dept.id);
+                
+                const col = document.createElement('div');
+                col.className = 'site-col';
+                col.innerHTML = `
+                    <div class="site-header" style="background: #3b82f6;">
+                        <span>${dept.name}</span>
+                    </div>`;
+
+                const zone = document.createElement('div');
+                zone.className = 'dept-zone' + (dept.id === null ? ' unassigned' : '');
+                zone.style.minHeight = '200px';
+                zone.dataset.deptId = dept.id ?? '';
+                zone.dataset.siteId = 'keep';
+
+                zone.innerHTML = zoneEmps.length === 0
+                            ? '<div class="empty-zone">Drop here</div>'
+                            : zoneEmps.map(e => chipHTML(e)).join('');
+
+                zone.addEventListener('dragover', onDragOver);
+                zone.addEventListener('dragleave', onDragLeave);
+                zone.addEventListener('drop', onDrop);
+
+                col.appendChild(zone);
+                board.appendChild(col);
+            });
+        }
+
+        board.querySelectorAll('.emp-chip').forEach(chip => {
+            chip.addEventListener('dragstart', onDragStart);
+            chip.addEventListener('dragend',   onDragEnd);
+        });
+    }
+
+    function chipHTML(emp) {
+        return `<div class="emp-chip" draggable="true" data-id="${emp.id}" data-site="${emp.site_id}" data-dept="${emp.department_id ?? ''}">
+            <div class="chip-avatar">${getInitials(emp.name)}</div>
+            <div class="chip-info">
+                <div class="chip-name">${emp.name}</div>
+                <div class="chip-role">${emp.role} · ${emp.id}</div>
+            </div>
+            <span class="drag-handle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
+            </span>
+        </div>`;
+    }
+
+    // ── Drag handlers ────────────────────────────────────────────────────────
+
+    function onDragStart(e) {
+        const chip = e.currentTarget;
+        dragState.empId    = chip.dataset.id;
+        dragState.fromSiteId = chip.dataset.site;
+        dragState.fromDeptId = chip.dataset.dept;
+        chip.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', chip.dataset.id);
+    }
+
+    function onDragEnd(e) {
+        e.currentTarget.classList.remove('dragging');
+    }
+
+    function onDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        e.currentTarget.classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+        // Only remove if leaving the zone itself (not a child)
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+    }
+
+    async function onDrop(e) {
+        e.preventDefault();
+        const zone = e.currentTarget;
+        zone.classList.remove('drag-over');
+
+        let emp = null;
+        try {
+            if (typeof API !== 'undefined') emp = await API.getEmployee(dragState.empId);
+            else if (typeof DB !== 'undefined') emp = DB.getEmployee(dragState.empId);
+        } catch(err) { console.error(err); }
+
+        if (!emp) return;
+
+        let toSiteId = zone.dataset.siteId === 'keep' ? emp.site_id : parseInt(zone.dataset.siteId);
+        let toDeptId = zone.dataset.deptId === 'keep' ? emp.department_id : (zone.dataset.deptId === '' ? null : parseInt(zone.dataset.deptId));
+
+        if (toSiteId == emp.site_id && toDeptId == emp.department_id) return;
+
+        try {
+            if (typeof API !== 'undefined') {
+                await API.relocateEmployee(emp.id, toSiteId, toDeptId);
+            } else if (typeof DB !== 'undefined') {
+                DB.relocateEmployee(emp.id, toSiteId, toDeptId);
+            }
+            showToast(`${emp.name} relocated successfully`, 'success');
+            buildBoard();
+        } catch (err) {
+            showToast('Failed to relocate: ' + err.message, 'error');
+        }
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────────
+
+    function showToast(msg, type = '') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className   = 'show ' + type;
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.className = ''; }, 3000);
+    }
+
+    // Set initial mode on load
+    setMode(currentMode);
+
+</script>
+</body>
+</html>

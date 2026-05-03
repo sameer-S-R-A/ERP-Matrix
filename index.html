@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ERP Management App</title>
+
+    <!-- Auth guard — runs before body renders -->
+    <script>if (!localStorage.getItem('erp_session')) window.location.href = 'login.html';</script>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#B91C1C">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #B91C1C;
+            --secondary: #1E40AF;
+            --accent: #B91C1C;
+            --text-main: #1F2937;
+            --text-muted: #4B5563;
+            --background: #FFFFFF;
+            --border-radius-btn: 8px;
+            --border-radius-card: 24px;
+            --shadow-card: 0 10px 30px rgba(0,0,0,0.08);
+            --transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navbar */
+        nav {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            z-index: 1000;
+            padding: 1.5rem 0;
+            transition: var(--transition);
+        }
+        nav.scrolled {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        .nav-content {
+            max-width: 1400px; margin: 0 auto;
+            padding: 0 2rem;
+            position: relative;
+            display: flex; align-items: center; justify-content: flex-end;
+            min-height: 40px;
+        }
+        .nav-brand {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            position: absolute;
+            top: 2rem; left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        nav.scrolled .nav-brand {
+            flex-direction: row; gap: 12px;
+            top: 50%; left: 2rem;
+            transform: translate(0, -50%);
+        }
+        .nav-logo { width: 80px; height: 80px; object-fit: contain; transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        nav.scrolled .nav-logo { width: 40px; height: 40px; }
+
+        .nav-brand h1 { font-size: 1.8rem; font-weight: 700; color: white; transition: all 0.6s; margin: 0; white-space: nowrap; }
+        nav.scrolled .nav-brand h1 { font-size: 1.4rem; color: var(--primary); }
+
+        .nav-actions {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .nav-org-name {
+            font-size: 0.85rem; font-weight: 600;
+            color: rgba(255,255,255,0.85);
+            transition: color 0.3s;
+        }
+        nav.scrolled .nav-org-name { color: var(--text-muted); }
+        .nav-logout-btn {
+            padding: 7px 16px; border-radius: 8px;
+            background: rgba(255,255,255,0.2); color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-family: inherit; font-size: 0.85rem;
+            font-weight: 600; cursor: pointer;
+            transition: var(--transition); text-decoration: none;
+        }
+        nav.scrolled .nav-logout-btn {
+            background: white; color: var(--text-main);
+            border-color: #e2e8f0;
+        }
+        .nav-logout-btn:hover { opacity: 0.85; }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; color: white;
+            padding: 6rem 2rem 4rem;
+            position: relative;
+            background: linear-gradient(135deg, rgba(30,64,175,0.85) 0%, rgba(185,28,28,0.85) 100%),
+                        url('https://images.unsplash.com/photo-1541888082420-ef30691e8460?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80') center/cover;
+        }
+        .hero-content {
+            position: relative; z-index: 10; width: 100%; max-width: 1200px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 3rem; text-align: left;
+            margin-top: 3rem;
+        }
+        .hero-text { flex: 1; }
+        .hero h1 {
+            font-size: clamp(2.8rem, 6vw, 4.5rem);
+            font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            margin-bottom: 1.5rem;
+        }
+        .hero p { font-size: 1.4rem; opacity: 0.9; margin-bottom: 2.5rem; max-width: 500px; }
+        
+        .quick-actions-card {
+            background: white; border-radius: 20px; padding: 2.2rem;
+            width: 100%; max-width: 440px; box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            flex-shrink: 0; color: var(--text-main); text-align: left;
+        }
+        .quick-actions-card h3 {
+            font-size: 1rem; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.5rem;
+        }
+        .qa-btn {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; padding: 14px 18px; border-radius: 12px;
+            background: white; border: 1px solid #e5e7eb;
+            color: var(--text-main); font-weight: 600; font-size: 1rem;
+            text-decoration: none; transition: var(--transition);
+            margin-bottom: 12px; cursor: pointer; font-family: inherit;
+        }
+        .qa-btn:last-child { margin-bottom: 0; }
+        .qa-btn:hover { background: #f8fafc; border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); color: var(--text-main); }
+        .qa-btn.qa-primary { background: #059669; color: white; border-color: #059669; }
+        .qa-btn.qa-primary:hover { background: #047857; border-color: #047857; color: white; }
+        .hero-btn {
+            display: inline-block;
+            background: white; color: var(--primary);
+            padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700;
+            border-radius: var(--border-radius-btn); text-decoration: none;
+            transition: var(--transition);
+        }
+        .hero-btn:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.2); color: var(--secondary); }
+
+        /* Sections */
+        section {
+            padding: 8rem 0; max-width: 1400px; margin: 0 auto; padding-inline: 2rem;
+        }
+        .section-title {
+            text-align: center; font-size: 2.8rem; margin-bottom: 5rem;
+            color: var(--text-main); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;
+        }
+
+        /* Module Cards */
+        .modules-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2.5rem;
+        }
+        .module-card {
+            background: white; border-radius: var(--border-radius-card); padding: 3.5rem 2rem;
+            border: 1px solid rgba(0,0,0,0.06); box-shadow: var(--shadow-card);
+            transition: var(--transition); text-decoration: none; display: block; color: inherit;
+        }
+        .module-card:hover {
+            transform: translateY(-10px); border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+        }
+        .module-icon {
+            width: 68px; height: 68px; background: rgba(185,28,28,0.06); color: var(--primary);
+            border-radius: 18px; display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1.8rem;
+        }
+        .module-card h3 {
+            color: var(--primary); font-size: 1.6rem; margin-bottom: 0.8rem;
+            line-height: 1.15; letter-spacing: -0.02em;
+        }
+        .module-card p { color: var(--text-muted); font-size: 1rem; }
+
+        /* Sites list within module card */
+        .sites-grid { margin-top: 1.8rem; display: flex; flex-direction: column; gap: 0.8rem; }
+        .site-card {
+            display: flex; align-items: center; gap: 1rem; padding: 1.1rem;
+            border: 1px solid #e5e7eb; border-radius: 12px; transition: var(--transition);
+            text-decoration: none; color: inherit;
+        }
+        .site-card:hover { border-color: var(--primary); background: #fef2f2; transform: translateX(5px); }
+
+        /* Contact dropdown */
+        details.contact-dropdown { cursor: pointer; }
+        details.contact-dropdown > summary {
+            list-style: none; outline: none;
+            display: flex; flex-direction: column; position: relative;
+        }
+        details.contact-dropdown > summary::-webkit-details-marker { display: none; }
+        .dropdown-icon {
+            position: absolute; top: 0; right: 0;
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); color: var(--text-muted);
+        }
+        details.contact-dropdown[open] .dropdown-icon { transform: rotate(180deg); color: var(--primary); }
+        .contact-info-grid { display: grid; gap: 1.4rem; margin-top: 2rem; padding-top: 1.8rem; border-top: 1px solid #e5e7eb; }
+        .contact-row { display: flex; align-items: flex-start; gap: 1rem; }
+        .contact-icon { color: var(--primary); flex-shrink: 0; margin-top: 4px; }
+
+        /* Animations */
+        .fade-up { opacity: 0; transform: translateY(50px); transition: opacity 1s ease, transform 1s ease; }
+        .fade-up.visible { opacity: 1; transform: translateY(0); }
+        .delay-100 { transition-delay: 0.1s; }
+        .delay-200 { transition-delay: 0.2s; }
+        .delay-300 { transition-delay: 0.3s; }
+
+        /* Footer */
+        footer {
+            text-align: center; padding: 4rem 2rem; color: var(--text-muted);
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* Modal Styles */
+        dialog {
+            margin: auto;
+            border: none;
+            border-radius: var(--border-radius-card);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            padding: 0;
+            background: var(--background);
+            color: var(--text-main);
+            max-width: 90vw;
+        }
+        dialog::backdrop {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        @media(max-width: 992px) {
+            .hero { padding-top: 8rem; }
+            .hero-content { flex-direction: column; text-align: center; justify-content: center; margin-top: 0; gap: 2rem; }
+            .hero p { margin-inline: auto; }
+            .quick-actions-card { margin-top: 1rem; max-width: 100%; margin-inline: auto; }
+        }
+
+        @media(max-width: 768px) {
+            .nav-brand h1 { font-size: 1.3rem; }
+            nav.scrolled .nav-brand h1 { font-size: 1.05rem; }
+            .nav-logo { width: 56px; height: 56px; }
+            nav.scrolled .nav-logo { width: 32px; height: 32px; }
+            nav.scrolled .nav-brand { left: 1rem; gap: 8px; }
+            .nav-content { padding: 0 1rem; }
+            .nav-org-name { display: none; }
+            .section-title { font-size: 2.2rem; margin-bottom: 3rem; }
+            .modules-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav id="navbar">
+        <div class="nav-content">
+            <div class="nav-brand">
+                <img src="logo.png" alt="ERP Logo" class="nav-logo" onerror="this.src='https://placehold.co/40x40/B91C1C/white?text=ERP'">
+                <h1>ERP Management App</h1>
+            </div>
+            <div class="nav-actions">
+                <span class="nav-org-name" id="navOrgName"></span>
+                <a href="admin.html" class="nav-logout-btn">Admin Panel</a>
+                <button onclick="doLogout()" class="nav-logout-btn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1>ERP Portal Dashboard</h1>
+                <p>Select a module to manage your operations, employees, and sites.</p>
+                <a href="#modules" class="hero-btn">Access Modules</a>
+            </div>
+            
+            <div class="quick-actions-card">
+                <h3>QUICK ACTIONS</h3>
+                <a href="employee-form.html" class="qa-btn qa-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add New Employee
+                </a>
+                <a href="admin.html?section=sites" class="qa-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Manage Sites
+                </a>
+                <a href="admin.html?section=departments" class="qa-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Manage Departments
+                </a>
+                <button onclick="document.getElementById('relocateModal').showModal()" class="qa-btn" style="border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:inherit;color:inherit;width:100%;text-align:left;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                    Relocate Employee
+                </button>
+                <a href="attendance-mark.html" class="qa-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    Mark Attendance
+                </a>
+                <button id="installAppBtn" class="qa-btn" style="display: none; border:1px solid #059669; background:rgba(5, 150, 105, 0.05); color:#059669; cursor:pointer; font-family:inherit; font-size:inherit; width:100%; text-align:left; font-weight:600; margin-top:8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Install App on Phone
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <section id="modules">
+        <h2 class="section-title fade-up">Management Modules</h2>
+
+        <div class="modules-grid">
+
+            <!-- Module 1: Project & Site Management -->
+            <div class="module-card fade-up delay-100">
+                <div class="module-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                </div>
+                <h3>Project & Site Management</h3>
+                <p>View and manage all active construction sites. Click a site to access attendance.</p>
+                <div class="sites-grid" id="sitesListHome"></div>
+            </div>
+
+            <!-- Module 2: Daily Payment Manager -->
+            <a href="payments.html" class="module-card fade-up delay-200">
+                <div class="module-icon" style="background: rgba(30,64,175,0.06); color: var(--secondary);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+                <h3 style="color: var(--secondary);">Daily Payment Manager</h3>
+                <p>Track, manage, and process daily wage payments efficiently and securely.</p>
+            </a>
+
+            <!-- Module 3: Employee Management -->
+            <a href="employees.html" class="module-card fade-up delay-200">
+                <div class="module-icon" style="background: rgba(5,150,105,0.06); color: #059669;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </div>
+                <h3 style="color: #059669;">Employee Management</h3>
+                <p>Full directory of all workers — profiles, attendance, salary records, and documents in one place.</p>
+            </a>
+
+            <!-- Module 4: Admin Panel -->
+            <a href="admin.html" class="module-card fade-up delay-300">
+                <div class="module-icon" style="background: rgba(30,64,175,0.06); color: var(--secondary);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </div>
+                <h3 style="color: var(--secondary);">Admin Panel</h3>
+                <p>Manage sites, departments, employee relocation, and organisation settings from one place.</p>
+            </a>
+
+            <!-- Module 5: DnD Relocation -->
+            <div class="module-card fade-up delay-300" onclick="document.getElementById('relocateModal').showModal()" style="cursor:pointer;">
+                <div class="module-icon" style="background: rgba(5,150,105,0.06); color: var(--accent-green);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                </div>
+                <h3 style="color: var(--accent-green);">Relocate Workers</h3>
+                <p>Drag and drop workers between sites and departments on an interactive kanban board.</p>
+            </div>
+
+            <!-- Module 6: Contact Us -->
+            <details class="module-card contact-dropdown fade-up delay-300">
+                <summary>
+                    <div class="module-icon" style="background: rgba(245,158,11,0.06); color: #d97706;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </div>
+                    <h3 style="color: #d97706;">Contact Us</h3>
+                    <p>Reach out for administration support</p>
+                    <svg class="dropdown-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </summary>
+                <div class="contact-info-grid">
+                    <div class="contact-row">
+                        <svg class="contact-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <div><strong style="display: block; color: var(--text-main); font-size: 1.05rem;" id="pub-contact-name">Not Configured</strong></div>
+                    </div>
+                    <div class="contact-row">
+                        <svg class="contact-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                        <div>
+                            <a href="#" id="pub-contact-phone1" style="color: var(--text-main); text-decoration: none; display: block; font-weight: 500;">Configure in Settings</a>
+                            <a href="#" id="pub-contact-phone2" style="color: var(--text-main); text-decoration: none; display: block; font-weight: 500; margin-top: 4px; display: none;"></a>
+                        </div>
+                    </div>
+                    <div class="contact-row">
+                        <svg class="contact-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <span style="font-size: 0.98rem; color: var(--text-main);" id="pub-contact-address">Update your office address in settings.</span>
+                    </div>
+                    <div class="contact-row">
+                        <svg class="contact-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        <a href="#" id="pub-contact-email" style="color: var(--text-main); text-decoration: none; font-size: 0.98rem; font-weight: 500;">Configure Email</a>
+                    </div>
+                </div>
+            </details>
+
+        </div>
+    </section>
+
+    <!-- Relocation Modal -->
+    <dialog id="relocateModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px;">
+            <h2 style="margin-bottom: 10px;">Select Relocation Type</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Do you want to relocate workers between different sites, or between departments?</p>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <a href="dnd-relocate.html?mode=sites" class="btn btn-primary" style="justify-content: center;">Relocate Between Sites</a>
+                <a href="dnd-relocate.html?mode=departments" class="btn btn-secondary" style="justify-content: center;">Relocate Between Departments</a>
+            </div>
+            <button class="btn" onclick="this.closest('dialog').close()" style="margin-top: 16px; width: 100%; justify-content: center;">Cancel</button>
+        </div>
+    </dialog>
+
+    <footer>
+        <p>&copy; 2026 ERP Management App. All rights reserved.</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        Auth.requireAuth();
+
+        // Show org name in nav
+        const session = Auth.getSession();
+        if (session) document.getElementById('navOrgName').textContent = session.org_name;
+
+        // Populate Contact Details
+        const org = Auth.getOrg();
+        if (org) {
+            if (org.contact_name) document.getElementById('pub-contact-name').textContent = org.contact_name;
+            if (org.contact_email) {
+                const el = document.getElementById('pub-contact-email');
+                el.textContent = org.contact_email;
+                el.href = 'mailto:' + org.contact_email;
+            }
+            if (org.contact_phone1) {
+                const el = document.getElementById('pub-contact-phone1');
+                el.textContent = org.contact_phone1;
+                el.href = 'tel:' + org.contact_phone1.replace(/[^0-9+]/g, '');
+            }
+            if (org.contact_phone2) {
+                const el = document.getElementById('pub-contact-phone2');
+                el.textContent = org.contact_phone2;
+                el.href = 'tel:' + org.contact_phone2.replace(/[^0-9+]/g, '');
+                el.style.display = 'block';
+            } else {
+                document.getElementById('pub-contact-phone2').style.display = 'none';
+            }
+            if (org.contact_address) document.getElementById('pub-contact-address').textContent = org.contact_address;
+        }
+
+        function doLogout() { Auth.logout(); }
+
+        // Render dynamic sites list in Module 1
+        const sitesEl = document.getElementById('sitesListHome');
+        try {
+            if (typeof DB !== 'undefined') {
+                DB.getSites().forEach(s => {
+                    const cnt = DB.getEmployees({ site_id: s.id }).length;
+                    const a = document.createElement('a');
+                    a.href = 'attendance-mark.html?site=' + s.id;
+                    a.className = 'site-card';
+                    a.innerHTML = `
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <div style="flex-grow:1;">
+                            <strong style="display:block;color:var(--text-main);font-size:1rem;">${s.name}</strong>
+                            <span style="font-size:0.85rem;color:var(--text-muted);">${s.location || ''} · ${cnt} workers</span>
+                        </div>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+                    sitesEl.appendChild(a);
+                });
+            } else if (typeof API !== 'undefined') {
+                API.getSites().then(sites => {
+                    sites.forEach(async s => {
+                        const emps = await API.getEmployees({ site_id: s.id });
+                        const a = document.createElement('a');
+                        a.href = 'attendance-mark.html?site=' + s.id;
+                        a.className = 'site-card';
+                        a.innerHTML = `
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <div style="flex-grow:1;">
+                                <strong style="display:block;color:var(--text-main);font-size:1rem;">${s.name}</strong>
+                                <span style="font-size:0.85rem;color:var(--text-muted);">${s.location || ''} · ${emps.length} workers</span>
+                            </div>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+                        sitesEl.appendChild(a);
+                    });
+                }).catch(e => console.error(e));
+            }
+        } catch (e) {
+            console.error('Error rendering sites list:', e);
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installBtn = document.getElementById('installAppBtn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'flex';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBtn.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installBtn.style.display = 'none';
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+        });
+
+        // Scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>
