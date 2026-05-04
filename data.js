@@ -4,7 +4,7 @@
    =========================================== */
 
 const APP_NAME = 'ERP Management App';
-const API_BASE = 'http://127.0.0.1:5001';
+const API_BASE = 'https://api.edutlra.cloud';
 
 /* ─── Auth ─────────────────────────────────── */
 const Auth = {
@@ -61,7 +61,7 @@ async function _req(method, path, body) {
     try {
         r = await fetch(API_BASE + path, opts);
     } catch {
-        throw new Error('Cannot reach the backend. Make sure Flask is running on port 5001.');
+        throw new Error('Cannot reach the backend. Make sure the Dokploy server is running properly.');
     }
     if (!r.ok) {
         const err = await r.json().catch(() => ({}));

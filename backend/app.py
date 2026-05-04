@@ -9,8 +9,8 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+url: str = "https://zwbhlmdcvaifkwgufezj.supabase.co"
+key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3YmhsbWRjdmFpZmt3Z3VmZXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczOTQzNzksImV4cCI6MjA5Mjk3MDM3OX0.yCuUcSIQgSL0H3rGGkFQEErH_FBpjnr0KcIx3Cp39xw"
 supabase: Client = create_client(url, key)
 
 
